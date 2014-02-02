@@ -1,7 +1,8 @@
 #ifndef SMARTTRAINING_H
 #define SMARTTRAINING_H
 
-#define VERSION_MAJOR 1
+//#define VERSION_MAJOR 1
+//static int const VERSION_MAJOR = 1;
 // 一桁上限
 #define VERSION_MINOR 0
 

@@ -1,17 +1,15 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
 
 #include "smarttraining.h"
 #include "common.h"
 
 /** 設定画面 **/
-Window configWindow;
+Window *configWindow;
 
 /** 画面データ **/
 static struct ConfigWindowData {
     /** メニューレイヤー **/
-    SimpleMenuLayer menuLayer;
+    SimpleMenuLayer *menuLayer;
     /** メニューセクション **/
     SimpleMenuSection menuSections[1];
     /** メニューアイテム **/
@@ -42,20 +40,10 @@ void setVersion(int major, int minor, char* buffer) {
     buffer[3] = digits[minor % 10];
 }
 
-/**
- * 初期化
- */
-void config_window_handle_init(AppContextRef ctx) {
-    (void) ctx;
-
-    // 画面の初期化
-    window_init(&configWindow, "SmartTraining");
-    window_set_fullscreen(&configWindow, true);
-    //    window_set_background_color(&selTrainTypeWindow, GColorBlack);
-
+static void window_load(Window *window) {
     // メニューレイヤー初期化[0]
     char *buffer = "00.00";
-    setVersion(VERSION_MAJOR, VERSION_MINOR, buffer);
+    setVersion(2, 0, buffer);   // TODO jsonを参照すること
     config_window_data.menuItems[0] = (SimpleMenuItem)
     {
         .title = "Version",
@@ -70,16 +58,39 @@ void config_window_handle_init(AppContextRef ctx) {
         .items = config_window_data.menuItems,
         .num_items = ARRAY_LENGTH(config_window_data.menuItems)
     };
-    simple_menu_layer_init(&config_window_data.menuLayer,
-            configWindow.layer.frame, &configWindow,
+
+    // get window frame
+    Layer *window_layer = window_get_root_layer(configWindow);
+    GRect bounds = layer_get_frame(window_layer);
+    config_window_data.menuLayer = simple_menu_layer_create(
+            bounds, configWindow,
             config_window_data.menuSections,
             ARRAY_LENGTH(config_window_data.menuSections), NULL);
-    layer_add_child(&configWindow.layer,
-            simple_menu_layer_get_layer(&config_window_data.menuLayer));
+    layer_add_child(window_layer,
+            simple_menu_layer_get_layer(config_window_data.menuLayer));
+}
+
+static void window_unload(Window *window) {
+    simple_menu_layer_destroy(config_window_data.menuLayer);
+}
+
+/**
+ * 初期化
+ */
+void config_window_handle_init(void) {
+    // 画面の初期化
+    configWindow = window_create();
+    window_set_fullscreen(configWindow, true);
+    //    window_set_background_color(&selTrainTypeWindow, GColorBlack);
+    window_set_window_handlers(configWindow, (WindowHandlers) {
+        .load = window_load,
+        .unload = window_unload,
+    });
 }
 
 /**
  * 後始末
  */
-void config_window_handle_deinit(AppContextRef ctx) {
+void config_window_handle_deinit(void) {
+    window_destroy(configWindow);
 }

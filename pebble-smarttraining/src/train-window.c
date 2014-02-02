@@ -1,26 +1,19 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
 
 #include "smarttraining.h"
 #include "train-window.h"
 #include "common.h"
 
 #define BITMAP_BUFFER_BYTES 1024
-// タイマー更新
-#define TIMER_UPDATE 1
-#ifndef APP_TIMER_INVALID_HANDLE
-    #define APP_TIMER_INVALID_HANDLE 0xDEADBEEF
-#endif
 
 /** トレーニング画面 **/
-Window trainWindow;
+Window *trainWindow;
 /** トレーニングタイプ選択画面 **/
-extern Window selTrainTypeWindow;
+extern Window *selTrainTypeWindow;
 /** コントロール選択画面 **/
-extern Window selControlWindow;
+extern Window *selControlWindow;
 /** 設定画面 **/
-extern Window configWindow;
+extern Window *configWindow;
 
 /** 単位系 **/
 enum {
@@ -133,36 +126,34 @@ enum {
 /** 画面データ **/
 static struct TrainWindowData {
 
-    AppContextRef app;
-
     /** アイコン：トレーニングアイコン **/
-    BitmapLayer control_icon_layer;
-    GBitmap control_icon_bitmap;
+    BitmapLayer *control_icon_layer;
+    GBitmap *control_icon_bitmap;
     uint8_t control_bitmap_data[BITMAP_BUFFER_BYTES];
 
     /** アイコン：コントロール **/
-    BitmapLayer training_icon_layer;
-    GBitmap training_icon_bitmap;
+    BitmapLayer *training_icon_layer;
+    GBitmap *training_icon_bitmap;
     uint8_t training_bitmap_data[BITMAP_BUFFER_BYTES];
 
     /** 中段：継続時間：値 **/
-    TextLayer mdlValLayer;
+    TextLayer *mdlValLayer;
 
     /** 下段：値 **/
-    TextLayer btmValLayer;
+    TextLayer *btmValLayer;
     /** 下段：単位 **/
-    TextLayer btmUntLayer;
+    TextLayer *btmUntLayer;
     
     /** 反転レイヤー **/
-    InverterLayer invLayer;
+    InverterLayer *invLayer;
     /** フォーカス：トレーニングアイコン **/
-    InverterLayer focusUpperLeftLayer;
+    InverterLayer *focusUpperLeftLayer;
     /** フォーカス：コントロールアイコン **/
-    InverterLayer focusUpperRightLayer;
+    InverterLayer *focusUpperRightLayer;
     /** フォーカス：中段 **/
-    InverterLayer focusMiddleLayer;
+    InverterLayer *focusMiddleLayer;
     /** フォーカス：下段 **/
-    InverterLayer focusBottomLayer;
+    InverterLayer *focusBottomLayer;
 
     /** フォーカスインデクス **/
     uint32_t indexFocus;
@@ -199,7 +190,7 @@ static struct TrainWindowData {
     time_t last_pebble_time;
     // ストップウォッチ開始フラグ
     bool started;
-    AppTimerHandle update_timer;
+    AppTimer *update_timer;
 
 } train_window_data;
 
@@ -210,28 +201,28 @@ static struct TrainWindowData {
 void update_focus() {
     switch (train_window_data.indexFocus) {
     case TRAIN_WINDOW_FOCUS_UPPER_RIGHT:
-        layer_set_hidden(&train_window_data.focusUpperRightLayer.layer, false);
-        layer_set_hidden(&train_window_data.focusBottomLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusMiddleLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusUpperLeftLayer.layer, true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperRightLayer), false);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusBottomLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusMiddleLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperLeftLayer), true);
         break;
     case TRAIN_WINDOW_FOCUS_MIDDLE:
-        layer_set_hidden(&train_window_data.focusUpperRightLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusBottomLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusMiddleLayer.layer, false);
-        layer_set_hidden(&train_window_data.focusUpperLeftLayer.layer, true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperRightLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusBottomLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusMiddleLayer), false);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperLeftLayer), true);
         break;
     case TRAIN_WINDOW_FOCUS_BOTTOM:
-        layer_set_hidden(&train_window_data.focusUpperRightLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusBottomLayer.layer, false);
-        layer_set_hidden(&train_window_data.focusMiddleLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusUpperLeftLayer.layer, true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperRightLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusBottomLayer), false);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusMiddleLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperLeftLayer), true);
         break;
     case TRAIN_WINDOW_FOCUS_UPPER_LEFT:
-        layer_set_hidden(&train_window_data.focusUpperRightLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusBottomLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusMiddleLayer.layer, true);
-        layer_set_hidden(&train_window_data.focusUpperLeftLayer.layer, false);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperRightLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusBottomLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusMiddleLayer), true);
+        layer_set_hidden(inverter_layer_get_layer(train_window_data.focusUpperLeftLayer), false);
         break;
     default:
         break;
@@ -244,13 +235,12 @@ void update_focus() {
 static void send_cmd(uint8_t cmd) {
     Tuplet value = TupletInteger(KEY_CMD, cmd);
     DictionaryIterator *iter;
-    app_message_out_get(&iter);
+    app_message_outbox_begin(&iter);
     if (iter == NULL)
         return;
     dict_write_tuplet(iter, &value);
     dict_write_end(iter);
-    app_message_out_send();
-    app_message_out_release();
+    app_message_outbox_send();
 }
 
 static void send_ver(int major, int minor) {
@@ -258,13 +248,12 @@ static void send_ver(int major, int minor) {
     int ver = major * 10 + minor;
     Tuplet value = TupletInteger(KEY_VER, ver);
     DictionaryIterator *iter;
-    app_message_out_get(&iter);
+    app_message_outbox_begin(&iter);
     if (iter == NULL)
         return;
     dict_write_tuplet(iter, &value);
     dict_write_end(iter);
-    app_message_out_send();
-    app_message_out_release();
+    app_message_outbox_send();
 }
 
 /**
@@ -275,16 +264,14 @@ void init_stopwatch() {
     train_window_data.elapsed_time = 0;    // 経過時間
     train_window_data.start_time = 0;      // 開始時刻
     train_window_data.last_pebble_time = 0;    // 前の時刻情報
-    train_window_data.update_timer = APP_TIMER_INVALID_HANDLE;
+    train_window_data.update_timer = NULL;
 }
 
 /**
  * 選択キー押下時イベント
  */
-void train_window_select_single_click_handler(ClickRecognizerRef recognizer,
-        Window *window) {
+void train_window_select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     (void) recognizer;
-    (void) window;
 
     switch(train_window_data.indexFocus) {
     case TRAIN_WINDOW_FOCUS_UPPER_RIGHT:
@@ -292,7 +279,7 @@ void train_window_select_single_click_handler(ClickRecognizerRef recognizer,
         switch (train_window_data.status) {
         case STATUS_MEASURE:
             // 計測中はコントロール選択画面に遷移
-            window_stack_push(&selControlWindow, true /* Animated */);
+            window_stack_push(selControlWindow, true /* Animated */);
             break;
         case STATUS_PAUSE:
             // 一時停止中は計測再開コマンド送信
@@ -371,25 +358,24 @@ void train_window_select_single_click_handler(ClickRecognizerRef recognizer,
         switch (train_window_data.status) {
         case STATUS_STOP:
         case STATUS_MEASURE:
-            window_stack_push(&selTrainTypeWindow, true /* Animated */);
+            window_stack_push(selTrainTypeWindow, true /* Animated */);
             break;
         }
         break;
     }
 }
 
-void train_window_select_long_click_handler(ClickRecognizerRef recognizer,
-        Window *window) {
-    window_stack_push(&configWindow, true);
+void train_window_select_long_click_handler(ClickRecognizerRef recognizer, 
+        void *context) {
+    window_stack_push(configWindow, true);
 }
 
 /**
  * 上キー押下時イベント
  */
-void train_window_up_single_click_handler(ClickRecognizerRef recognizer,
-        Window *window) {
+void train_window_up_single_click_handler(ClickRecognizerRef recognizer, 
+        void *context) {
     (void) recognizer;
-    (void) window;
 
     // フォーカスの上方向ループ
     switch(train_window_data.indexFocus) {
@@ -414,10 +400,8 @@ void train_window_up_single_click_handler(ClickRecognizerRef recognizer,
 /**
  * 下キー押下時イベント
  */
-void train_window_down_single_click_handler(ClickRecognizerRef recognizer,
-        Window *window) {
+void train_window_down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     (void) recognizer;
-    (void) window;
 
     // フォーカスの下方向ループ
     switch(train_window_data.indexFocus) {
@@ -441,21 +425,19 @@ void train_window_down_single_click_handler(ClickRecognizerRef recognizer,
 /**
  * クリックイベント登録
  */
-void train_window_click_config_provider(ClickConfig **config, Window *window) {
-    (void) window;
+void train_window_click_config_provider(void *context) {
 
-    config[BUTTON_ID_SELECT]->click.handler =
-            (ClickHandler) train_window_select_single_click_handler;
-    config[BUTTON_ID_SELECT]->long_click.handler =
-            (ClickHandler) train_window_select_long_click_handler;
+    window_set_click_context(BUTTON_ID_UP, context);
 
-    config[BUTTON_ID_UP]->click.handler =
-            (ClickHandler) train_window_up_single_click_handler;
-    config[BUTTON_ID_UP]->click.repeat_interval_ms = 100;
+    window_single_click_subscribe(BUTTON_ID_SELECT, 
+            train_window_select_single_click_handler);
+    window_long_click_subscribe(BUTTON_ID_SELECT,
+            1000, train_window_select_long_click_handler, NULL);
 
-    config[BUTTON_ID_DOWN]->click.handler =
-            (ClickHandler) train_window_down_single_click_handler;
-    config[BUTTON_ID_DOWN]->click.repeat_interval_ms = 100;
+    window_single_repeating_click_subscribe(BUTTON_ID_UP,
+            100, train_window_up_single_click_handler);
+    window_single_repeating_click_subscribe(BUTTON_ID_DOWN,
+            100, train_window_down_single_click_handler);
 }
 
 /**
@@ -475,18 +457,16 @@ static void mkbitmap(GBitmap* bitmap, const uint8_t* data) {
  * 指定したリソースIDのアイコンデータをコントロールアイコンとして読み込む
  */
 void load_control_bitmap(uint32_t resource_id) {
-    const ResHandle h = resource_get_handle(resource_id);
-    resource_load(h, train_window_data.control_bitmap_data, BITMAP_BUFFER_BYTES);
-    mkbitmap(&train_window_data.control_icon_bitmap, train_window_data.control_bitmap_data);
+    train_window_data.control_icon_bitmap = gbitmap_create_with_resource(resource_id);
+    bitmap_layer_set_bitmap(train_window_data.control_icon_layer, train_window_data.control_icon_bitmap);
 }
 
 /**
  * 指定したリソースIDのアイコンデータをトレーニングアイコンとして読み込む
  */
 void load_training_bitmap(uint32_t resource_id) {
-    const ResHandle h = resource_get_handle(resource_id);
-    resource_load(h, train_window_data.training_bitmap_data, BITMAP_BUFFER_BYTES);
-    mkbitmap(&train_window_data.training_icon_bitmap, train_window_data.training_bitmap_data);
+    train_window_data.training_icon_bitmap = gbitmap_create_with_resource(resource_id);
+    bitmap_layer_set_bitmap(train_window_data.training_icon_layer, train_window_data.training_icon_bitmap);
 }
 
 /**
@@ -510,17 +490,17 @@ void update_status_icon(int status) {
     case STATUS_STOP:
         // 停止中は計測開始可能なアイコン表示
         load_control_bitmap(IMAGE_RESOURCE_IDS_CONTROL_ICON[2]);
-        layer_mark_dirty(&train_window_data.control_icon_layer.layer);
+        layer_mark_dirty(bitmap_layer_get_layer(train_window_data.control_icon_layer));
         break;
     case STATUS_PAUSE:
         // 一時停止中は計測開始可能なアイコン表示
         load_control_bitmap(IMAGE_RESOURCE_IDS_CONTROL_ICON[2]);
-        layer_mark_dirty(&train_window_data.control_icon_layer.layer);
+        layer_mark_dirty(bitmap_layer_get_layer(train_window_data.control_icon_layer));
         break;
     case STATUS_MEASURE:
         // 計測中は停止可能なアイコン表示
         load_control_bitmap(IMAGE_RESOURCE_IDS_CONTROL_ICON[0]);
-        layer_mark_dirty(&train_window_data.control_icon_layer.layer);
+        layer_mark_dirty(bitmap_layer_get_layer(train_window_data.control_icon_layer));
         break;
     }
 }
@@ -532,7 +512,7 @@ void update_status_icon(int status) {
 void update_training_type_icon(int trainingType) {
     train_window_data.trainingType = trainingType;
     load_training_bitmap(IMAGE_RESOURCE_IDS_TRAINING_ICON[train_window_data.trainingType]);
-    layer_mark_dirty(&train_window_data.training_icon_layer.layer);
+    layer_mark_dirty(bitmap_layer_get_layer(train_window_data.training_icon_layer));
 }
 
 /**
@@ -543,11 +523,11 @@ void update_disp_item_middle(uint32_t displayItem) {
     switch (displayItem) {
     case ITEM_DURATION:
         // 継続時間
-        text_layer_set_text(&train_window_data.mdlValLayer, train_window_data.valDuration);
+        text_layer_set_text(train_window_data.mdlValLayer, train_window_data.valDuration);
         break;
     case ITEM_TIMESTAMP:
         // 時刻
-        text_layer_set_text(&train_window_data.mdlValLayer, train_window_data.valTimestamp);
+        text_layer_set_text(train_window_data.mdlValLayer, train_window_data.valTimestamp);
         break;
     }
 }
@@ -559,7 +539,7 @@ void start_stopwatch() {
     train_window_data.started = true;
     train_window_data.last_pebble_time = 0;
     train_window_data.start_time = 0;
-    train_window_data.update_timer = app_timer_send_event(train_window_data.app, 100, TIMER_UPDATE);
+    train_window_data.update_timer = app_timer_register(100, handle_timer, NULL);
 }
 
 /**
@@ -567,10 +547,9 @@ void start_stopwatch() {
  */
 void stop_stopwatch() {
     train_window_data.started = false;
-    if (train_window_data.update_timer != APP_TIMER_INVALID_HANDLE) {
-        if (app_timer_cancel_event(train_window_data.app, train_window_data.update_timer)) {
-            train_window_data.update_timer = APP_TIMER_INVALID_HANDLE;
-        }
+    if (train_window_data.update_timer != NULL) {
+        app_timer_cancel(train_window_data.update_timer);
+        train_window_data.update_timer = NULL;
     }
 }
 
@@ -579,7 +558,7 @@ void stop_stopwatch() {
  */
 void restart_stopwatch() {
     train_window_data.started = true;
-    train_window_data.update_timer = app_timer_send_event(train_window_data.app, 100, TIMER_UPDATE);
+    train_window_data.update_timer = app_timer_register(100, handle_timer, NULL);
 }
 
 // TODO: Error handling
@@ -612,11 +591,11 @@ static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tup
         break;
     case KEY_VAL_BOTTOM:
         strncpy(train_window_data.valBottom, new_tuple->value->cstring, 16);
-        layer_mark_dirty(&train_window_data.btmValLayer.layer);
+        layer_mark_dirty(text_layer_get_layer(train_window_data.btmValLayer));
         break;
     case KEY_UNT_BOTTOM:
         strncpy(train_window_data.untBottom, new_tuple->value->cstring, 16);
-        layer_mark_dirty(&train_window_data.btmUntLayer.layer);
+        layer_mark_dirty(text_layer_get_layer(train_window_data.btmUntLayer));
         break;
     case KEY_CONTROL_STOPWATCH:
         switch ( new_tuple->value->int8 ) {
@@ -639,7 +618,7 @@ static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tup
     case KEY_GET_VERSION:
         // バージョン番号取得コマンド受信したらバージョン番号返す
         if (new_tuple->value->int8 > 0)
-            send_ver(VERSION_MAJOR, VERSION_MINOR);
+            send_ver(2, 0); // TODO jsonを参照すること
         break;
     }
 }
@@ -686,91 +665,77 @@ void train_window_select_training_type(int index) {
     }
 }
 
-/**
- * 初期化
- */
-void train_window_handle_init(AppContextRef ctx) {
-    (void) ctx;
+static void window_load(Window *window) {
 
-    train_window_data.app = ctx;
-    
-    // 画面の初期化
-    window_init(&trainWindow, "SmartTraining");
-    window_set_fullscreen(&trainWindow, true);
-//    window_set_background_color(&trainWindow, GColorBlack);
-    window_set_click_config_provider(&trainWindow,
-            (ClickConfigProvider) train_window_click_config_provider);
-
-    // とりあえず、単位系はSIにしておく。本来はPhoneAppから取得した値で更新する
-    train_window_data.unitSystem = UNIT_SYSTEM_SI;
-    init_stopwatch();
-
-    // 画像リソース初期化
-    resource_init_current_app (&APP_RESOURCES);
-    update_duration();
+    // get window frame
+    Layer *window_layer = window_get_root_layer(window);
 
     // 画像表示レイヤー初期化(上段)
     // コントロールアイコン
-    bitmap_layer_init(&train_window_data.control_icon_layer, GRect(95, 11, 46, 46));
-    bitmap_layer_set_bitmap(&train_window_data.control_icon_layer, &train_window_data.control_icon_bitmap);
-    layer_add_child(&trainWindow.layer, &train_window_data.control_icon_layer.layer);
+    train_window_data.control_icon_layer = bitmap_layer_create(GRect(95, 11, 46, 46));
+    bitmap_layer_set_bitmap(train_window_data.control_icon_layer, train_window_data.control_icon_bitmap);
+
+    //GRect bounds = layer_get_frame(window_layer);
+    layer_add_child(window_layer, bitmap_layer_get_layer(train_window_data.control_icon_layer));
     // トレーニングアイコン
-    bitmap_layer_init(&train_window_data.training_icon_layer, GRect(3, 11, 46, 46));
-    bitmap_layer_set_bitmap(&train_window_data.training_icon_layer, &train_window_data.training_icon_bitmap);
-    layer_add_child(&trainWindow.layer, &train_window_data.training_icon_layer.layer);
+    train_window_data.training_icon_layer = bitmap_layer_create(GRect(3, 11, 46, 46));
+    bitmap_layer_set_bitmap(train_window_data.training_icon_layer, train_window_data.training_icon_bitmap);
+    layer_add_child(window_layer, bitmap_layer_get_layer(train_window_data.training_icon_layer));
 
     // 値表示レイヤー初期化（中段）
-    text_layer_init(&train_window_data.mdlValLayer, GRect(0, 57, 144, 54));
-    text_layer_set_text(&train_window_data.mdlValLayer, train_window_data.valDuration);
-    text_layer_set_text_alignment(&train_window_data.mdlValLayer, GTextAlignmentCenter);
-    text_layer_set_font(&train_window_data.mdlValLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_40)));
-    layer_add_child(&trainWindow.layer, &train_window_data.mdlValLayer.layer);
+    train_window_data.mdlValLayer = text_layer_create(GRect(0, 57, 144, 54));
+    text_layer_set_text(train_window_data.mdlValLayer, train_window_data.valDuration);
+    text_layer_set_text_alignment(train_window_data.mdlValLayer, GTextAlignmentCenter);
+    text_layer_set_font(train_window_data.mdlValLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_40)));
+    layer_add_child(window_layer, text_layer_get_layer(train_window_data.mdlValLayer));
     
     // 値表示レイヤー初期化（下段）
     // 値
-    text_layer_init(&train_window_data.btmValLayer, GRect(0, 111, 95, 54));
-    text_layer_set_text(&train_window_data.btmValLayer, train_window_data.valBottom);
-    text_layer_set_text_alignment(&train_window_data.btmValLayer, GTextAlignmentRight);
-    text_layer_set_font(&train_window_data.btmValLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_40)));
-    layer_add_child(&trainWindow.layer, &train_window_data.btmValLayer.layer);
+    train_window_data.btmValLayer = text_layer_create(GRect(0, 111, 95, 54));
+    text_layer_set_text(train_window_data.btmValLayer, train_window_data.valBottom);
+    text_layer_set_text_alignment(train_window_data.btmValLayer, GTextAlignmentRight);
+    text_layer_set_font(train_window_data.btmValLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_40)));
+    layer_add_child(window_layer, text_layer_get_layer(train_window_data.btmValLayer));
     // 単位
-    text_layer_init(&train_window_data.btmUntLayer, GRect(96, 130, 46, 54));
-    text_layer_set_text(&train_window_data.btmUntLayer, train_window_data.untBottom);
-    text_layer_set_text_alignment(&train_window_data.btmUntLayer, GTextAlignmentLeft);
-    text_layer_set_font(&train_window_data.btmUntLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_20)));
-    layer_add_child(&trainWindow.layer, &train_window_data.btmUntLayer.layer);
+    train_window_data.btmUntLayer = text_layer_create(GRect(96, 130, 46, 54));
+    text_layer_set_text(train_window_data.btmUntLayer, train_window_data.untBottom);
+    text_layer_set_text_alignment(train_window_data.btmUntLayer, GTextAlignmentLeft);
+    text_layer_set_font(train_window_data.btmUntLayer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_SF_SQUARE_HEAD_CONDENSED_20)));
+    layer_add_child(window_layer, text_layer_get_layer(train_window_data.btmUntLayer));
 
     // 反転レイヤー
-    inverter_layer_init(&train_window_data.invLayer,
+    train_window_data.invLayer = inverter_layer_create(
             GRect(0, 0, 144, 168));
-    layer_add_child(&trainWindow.layer,
-            &train_window_data.invLayer.layer);
+    layer_add_child(window_layer,
+            inverter_layer_get_layer(train_window_data.invLayer));
 
     // フォーカスの初期化(右上)
     train_window_data.indexFocus = TRAIN_WINDOW_FOCUS_UPPER_RIGHT;
     // フォーカスレイヤー左上
-    inverter_layer_init(&train_window_data.focusUpperLeftLayer,
+    train_window_data.focusUpperLeftLayer = inverter_layer_create(
             GRect(3, 11, 46, 46));
-    layer_add_child(&trainWindow.layer,
-            &train_window_data.focusUpperLeftLayer.layer);
+    layer_add_child(window_layer,
+            inverter_layer_get_layer(train_window_data.focusUpperLeftLayer));
     // フォーカスレイヤー右上
-    inverter_layer_init(&train_window_data.focusUpperRightLayer,
+    train_window_data.focusUpperRightLayer = inverter_layer_create(
             GRect(95, 11, 46, 46));
-    layer_add_child(&trainWindow.layer,
-            &train_window_data.focusUpperRightLayer.layer);
+    layer_add_child(window_layer,
+            inverter_layer_get_layer(train_window_data.focusUpperRightLayer));
     // フォーカスレイヤー中段
-    inverter_layer_init(&train_window_data.focusMiddleLayer,
+    train_window_data.focusMiddleLayer = inverter_layer_create(
             GRect(3, 61, 138, 46));
-    layer_add_child(&trainWindow.layer,
-            &train_window_data.focusMiddleLayer.layer);
+    layer_add_child(window_layer,
+            inverter_layer_get_layer(train_window_data.focusMiddleLayer));
     // フォーカスレイヤー下段
-    inverter_layer_init(&train_window_data.focusBottomLayer,
+    train_window_data.focusBottomLayer = inverter_layer_create(
             GRect(3, 115, 138, 46));
-    layer_add_child(&trainWindow.layer,
-            &train_window_data.focusBottomLayer.layer);
+    layer_add_child(window_layer,
+            inverter_layer_get_layer(train_window_data.focusBottomLayer));
 
     // フォーカス更新
     update_focus();
+    // 継続時間更新
+    update_duration();
 
     // PhoneAppからのデータ受信コールバック登録
     Tuplet initial_values[] = {
@@ -795,17 +760,53 @@ void train_window_handle_init(AppContextRef ctx) {
     // PhoneAppに起動通知→PhoneAppが状態を返してPhoneAppの画面更新したい
     train_window_data.displayItemBottom = CMD_GET_DISTANCE;
     send_cmd(train_window_data.displayItemBottom);
-    
+}
+
+static void window_unload(Window *window) {
+    // データ送受信の後始末
+    app_sync_deinit(&train_window_data.sync);
+    // UIインスタンスの後始末
+    bitmap_layer_destroy(train_window_data.control_icon_layer);
+    bitmap_layer_destroy(train_window_data.training_icon_layer);
+    text_layer_destroy(train_window_data.mdlValLayer);
+    text_layer_destroy(train_window_data.btmValLayer);
+    text_layer_destroy(train_window_data.btmUntLayer);
+    inverter_layer_destroy(train_window_data.invLayer);
+    inverter_layer_destroy(train_window_data.focusUpperLeftLayer);
+    inverter_layer_destroy(train_window_data.focusUpperRightLayer);
+    inverter_layer_destroy(train_window_data.focusMiddleLayer);
+    inverter_layer_destroy(train_window_data.focusBottomLayer);
+}
+
+/**
+ * 初期化
+ */
+void train_window_handle_init(void) {
+
+    // 画面の初期化
+    trainWindow = window_create();
+    window_set_window_handlers(trainWindow, (WindowHandlers) {
+        .load = window_load,
+        .unload = window_unload,
+    });
+    window_set_fullscreen(trainWindow, true);
+//    window_set_background_color(&trainWindow, GColorBlack);
+    window_set_click_config_provider_with_context(trainWindow,
+            train_window_click_config_provider, (void*)trainWindow);
+
+    // とりあえず、単位系はSIにしておく。本来はPhoneAppから取得した値で更新する
+    train_window_data.unitSystem = UNIT_SYSTEM_SI;
+    init_stopwatch();
+
     // 画面表示
-    window_stack_push(&trainWindow, true /* Animated */);
+    window_stack_push(trainWindow, true /* Animated */);
 }
 
 /**
  * 後始末
  */
-void train_window_handle_deinit(AppContextRef ctx) {
-    // データ送受信の後始末
-    app_sync_deinit(&train_window_data.sync);
+void train_window_handle_deinit(void) {
+    window_destroy(trainWindow);
 }
 
 /**
@@ -831,47 +832,45 @@ void update_duration() {
  * ストップウォッチが動いている間だけ呼び出される
  * 秒を刻むイベントハンドラ
  */
-void handle_timer(AppContextRef ctx, AppTimerHandle handle, uint32_t cookie) {
-    (void)handle;
-    if (cookie == TIMER_UPDATE) {
-        if (train_window_data.started) {
-            layer_mark_dirty(&train_window_data.btmValLayer.layer);
+void handle_timer(void *data) {
+    if (train_window_data.started) {
+        layer_mark_dirty(text_layer_get_layer(train_window_data.btmValLayer));
 
-            train_window_data.elapsed_time += 100;
-            time_t pebble_time = get_pebble_time();
-            if (!train_window_data.last_pebble_time) train_window_data.last_pebble_time = pebble_time;
-            if (pebble_time > train_window_data.last_pebble_time) {
-                if (!train_window_data.start_time) {
-                    train_window_data.start_time = pebble_time - train_window_data.elapsed_time;
-                } else {
-                    train_window_data.elapsed_time = pebble_time - train_window_data.start_time;
-                }
-                train_window_data.last_pebble_time = pebble_time;
+        train_window_data.elapsed_time += 100;
+        time_t pebble_time = get_pebble_time();
+        if (!train_window_data.last_pebble_time) train_window_data.last_pebble_time = pebble_time;
+        if (pebble_time > train_window_data.last_pebble_time) {
+            if (!train_window_data.start_time) {
+                train_window_data.start_time = pebble_time - train_window_data.elapsed_time;
+            } else {
+                train_window_data.elapsed_time = pebble_time - train_window_data.start_time;
             }
-            train_window_data.update_timer = app_timer_send_event(ctx, 1000, TIMER_UPDATE);
+            train_window_data.last_pebble_time = pebble_time;
         }
-        // 継続時間表示の場合、継続時間で画面表示更新
-        if (train_window_data.displayItemMiddle == ITEM_DURATION) {
-            update_duration();
-        }
+        train_window_data.update_timer = app_timer_register(1000, handle_timer, NULL);
+    }
+    // 継続時間表示の場合、継続時間で画面表示更新
+    if (train_window_data.displayItemMiddle == ITEM_DURATION) {
+        update_duration();
     }
 }
 
 /**
  * 常に実行され続ける秒間イベント
  */
-void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
-    (void)ctx;
-    (void)t;
+void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
     if (train_window_data.displayItemMiddle == ITEM_TIMESTAMP) {
-        PblTm currentTime;
-        get_time(&currentTime);
-        string_format_time(
+        time_t timer;
+        struct tm *t;
+        // 現在時刻取得
+        time(&timer);
+        t = localtime(&timer);
+        strftime(
                 train_window_data.valTimestamp,
                 sizeof(train_window_data.valTimestamp),
                 "%T",
-                &currentTime);
+                t);
         update_disp_item_middle(train_window_data.displayItemMiddle);
     }
 

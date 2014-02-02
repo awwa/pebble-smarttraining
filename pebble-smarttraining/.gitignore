@@ -1,5 +1,3 @@
-/release
-/lib
-/include
-/build
-/tools
+
+# Ignore build generated files
+build

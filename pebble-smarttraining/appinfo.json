@@ -1,0 +1,72 @@
+{
+  "uuid": "0d63e9a4-7d00-4989-b15c-77a0188ac859",
+  "shortName": "SmartTraining",
+  "longName": "SmartTraining",
+  "companyName": "awwa",
+  "versionCode": 2,
+  "versionLabel": "2.0.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {},
+  "resources": {
+    "media": [
+      {
+        "type": "font",
+        "name": "FONT_SF_SQUARE_HEAD_CONDENSED_20",
+        "file": "fonts/SF-Square-Head-Condensed.ttf"
+      },
+      {
+        "type": "font",
+        "name": "FONT_SF_SQUARE_HEAD_CONDENSED_40",
+        "file": "fonts/SF-Square-Head-Condensed.ttf"
+      },
+      {
+        "type": "png",
+        "name": "PAUSE",
+        "file": "images/ic_pbl_pause.png"
+      },
+      {
+        "type": "png",
+        "name": "STOP",
+        "file": "images/ic_pbl_stop.png"
+      },
+      {
+        "type": "png",
+        "name": "REC",
+        "file": "images/ic_pbl_rec.png"
+      },
+      {
+        "type": "png",
+        "name": "WALK",
+        "file": "images/ic_pbl_walk.png"
+      },
+      {
+        "menuIcon": true,
+        "type": "png",
+        "name": "RUN",
+        "file": "images/ic_pbl_run.png"
+      },
+      {
+        "type": "png",
+        "name": "SWIM",
+        "file": "images/ic_pbl_swim.png"
+      },
+      {
+        "type": "png",
+        "name": "WHEELCHAIR",
+        "file": "images/ic_pbl_wheelchair.png"
+      },
+      {
+        "type": "png",
+        "name": "BICYCLE",
+        "file": "images/ic_pbl_bicycle.png"
+      },
+      {
+        "type": "png",
+        "name": "CUB",
+        "file": "images/ic_pbl_cub.png"
+      }
+    ]
+  }
+}

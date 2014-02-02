@@ -1,6 +1,5 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
+#include <time.h>
 
 /**
  * intを2桁の文字列に変換して返す。
@@ -24,12 +23,17 @@ void itoa2(int num, char* buffer) {
  * 現在時刻をtime_t型で返す
  */
 time_t get_pebble_time() {
-    PblTm t;
-    get_time(&t);
-    time_t seconds = t.tm_sec;
-    seconds += t.tm_min * 60;
-    seconds += t.tm_hour * 3600;
-    seconds += t.tm_yday * 86400;
-    seconds += (t.tm_year - 2012) * 31536000;
+    time_t timer;
+    struct tm *t;
+
+    // 現在時刻取得
+    time(&timer);
+    t = localtime(&timer);
+
+    time_t seconds = t->tm_sec;
+    seconds += t->tm_min * 60;
+    seconds += t->tm_hour * 3600;
+    seconds += t->tm_yday * 86400;
+    seconds += (t->tm_year - 2012) * 31536000;
     return seconds * 1000;
 }

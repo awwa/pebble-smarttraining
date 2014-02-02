@@ -1,13 +1,11 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
 
 #include "smarttraining.h"
 #include "train-window.h"
 #include "sel-train-type-window.h"
 
 /** トレーニングタイプ選択画面 **/
-Window selTrainTypeWindow;
+Window *selTrainTypeWindow;
 
 /**
  * アイテム選択時処理
@@ -26,36 +24,25 @@ void sel_train_type_window_select_item_callback(int index, void *context) {
 /** 画面データ **/
 static struct SelTrainTypeWindowData {
     /** メニューレイヤー **/
-    SimpleMenuLayer menuLayer;
+    SimpleMenuLayer *menuLayer;
     /** メニューセクション **/
     SimpleMenuSection menuSections[1];
     /** メニューアイテム **/
     SimpleMenuItem menuItems[6];
     /** アイコン配列 **/
-    BmpContainer icons[6];
+    GBitmap *icons[6];
 
 } sel_train_type_window_data;
 
-/**
- * 初期化
- */
-void sel_train_type_window_handle_init(AppContextRef ctx) {
-    (void) ctx;
-
-    // 画面の初期化
-    window_init(&selTrainTypeWindow, "SmartTraining");
-    window_set_fullscreen(&selTrainTypeWindow, true);
-    //    window_set_background_color(&selTrainTypeWindow, GColorBlack);
-
+static void window_load(Window *window) {
     // メニューレイヤー初期化
     for (int i = 0; i < 6; i++) {
         // 画像コンテナ初期化
-        bmp_init_container(IMAGE_RESOURCE_IDS_TRAINING_ICON[i],
-                &sel_train_type_window_data.icons[i]);
+        sel_train_type_window_data.icons[i] = gbitmap_create_with_resource(IMAGE_RESOURCE_IDS_TRAINING_ICON[i]);
         sel_train_type_window_data.menuItems[i] = (SimpleMenuItem)
         {
             .title = STRING_TRAINING[i],
-            .icon = &sel_train_type_window_data.icons[i].bmp,
+            .icon = sel_train_type_window_data.icons[i],
             .callback = sel_train_type_window_select_item_callback 
         };
     }
@@ -66,20 +53,44 @@ void sel_train_type_window_handle_init(AppContextRef ctx) {
         .items = sel_train_type_window_data.menuItems,
         .num_items = ARRAY_LENGTH(sel_train_type_window_data.menuItems)
     };
-    simple_menu_layer_init(&sel_train_type_window_data.menuLayer,
-            selTrainTypeWindow.layer.frame, &selTrainTypeWindow,
+
+    // get window frame
+    Layer *window_layer = window_get_root_layer(selTrainTypeWindow);
+    GRect bounds = layer_get_frame(window_layer);
+    sel_train_type_window_data.menuLayer = simple_menu_layer_create( 
+            bounds, selTrainTypeWindow,
             sel_train_type_window_data.menuSections,
             ARRAY_LENGTH(sel_train_type_window_data.menuSections), NULL);
-    layer_add_child(&selTrainTypeWindow.layer,
-            simple_menu_layer_get_layer(&sel_train_type_window_data.menuLayer));
+    layer_add_child(window_layer,
+            simple_menu_layer_get_layer(sel_train_type_window_data.menuLayer));
+}
+
+static void window_unload(Window *window) {
+    // 画像リソース解放処理
+    for (int i = 0; i < 6; i++) {
+        gbitmap_destroy(sel_train_type_window_data.icons[i]);
+    }
+    // メニューの開放処理
+    simple_menu_layer_destroy(sel_train_type_window_data.menuLayer);
+}
+
+/**
+ * 初期化
+ */
+void sel_train_type_window_handle_init(void) {
+    // 画面の初期化
+    selTrainTypeWindow = window_create();
+    window_set_fullscreen(selTrainTypeWindow, true);
+    //    window_set_background_color(&selTrainTypeWindow, GColorBlack);
+    window_set_window_handlers(selTrainTypeWindow, (WindowHandlers) {
+        .load = window_load,
+        .unload = window_unload,
+    });
 }
 
 /**
  * 後始末
  */
-void sel_train_type_window_handle_deinit(AppContextRef ctx) {
-    // 画像リソース解放処理
-    for (int i = 0; i < 6; i++) {
-        bmp_deinit_container(&sel_train_type_window_data.icons[i]);
-    }
+void sel_train_type_window_handle_deinit(void) {
+    window_destroy(selTrainTypeWindow);
 }
